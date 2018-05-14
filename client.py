@@ -6,19 +6,20 @@
 import socket
 import copy
 import sys
+import Queue
 
 # Settings
 SERVER_IP = "localhost"
 SERVER_PORT = 18420
-CLIENT_NAME = "AAAA"
-ALPHABETA_DEPTH = 4
+CLIENT_NAME = "Alice"
+ALPHABETA_DEPTH = 8
 ACTION_ID_LIST = [
     "1-1", 
     "2-1", "2-2", "2-3",
     "3-1", "3-2", "3-3",
     "4-1", "4-2", "4-3",
     "5-1", "5-2", "5-3",
-    "6-1", "6-2"
+#    "6-1", "6-2"
 ]
 SEASON_ID_LIST = ["1a", "1b", "2a", "2b", "3a", "3b", "4a", "4b", "5a", "5b", "6a", "6b"]
 KIND_ID_LIST = ["P", "A", "S"]
@@ -103,16 +104,17 @@ class GameState:
     def __init__(self, myid):
         self.reset()
         self.myid = myid
-        self.finished = False
     
     def reset(self):
         self.season_id = "1a"  # as string 1a~6b
         self.trend_id = "T0"   # as string T1, T2, T3
         self.start_player_id = 0  # as int
         self.current_player_id = 0
-        self.last_action = None
+        self.__last_actions = []
         self.assumption = None
         self.finished = False
+        self.season_changed = False
+        self.player_changed = True
         self.scores = {
             "T1": [0, 0],
             "T2": [0, 0],
@@ -154,7 +156,9 @@ class GameState:
             "trend_id": self.trend_id,
             "start_player_id": self.start_player_id,
             "scores": self.scores,
-            "resouces": self.resources
+            "resouces": self.resources,
+            "finished": self.finished,
+            "season_changed": self.season_changed
         }
         return d
     
@@ -172,7 +176,32 @@ class GameState:
 
     def setTrendId(self, trend_id):
         self.trend_id = trend_id
+    
+    def postSeasonChanged(self):
+        self.season_changed = True
 
+    def setPlayerChanged(self, flag):
+        self.player_changed = flag
+
+    def postFinished(self):
+        self.finished = True
+
+    def actionsToStr(self):
+        if len(self.__last_actions) == 1:
+            return str(self.__last_actions[0])
+        return "->".join(map(str, self.__last_actions))
+
+    def addAction(self, action):
+        self.__last_actions.append(action)
+
+    def getLastAction(self):
+        return self.__last_actions[0]
+    
+    def setActions(self, actions):
+        self.__last_actions = actions
+
+    def getActions(self):
+        return self.__last_actions
 
 # raw message to Message class
 def convertToMessage(raw_message):
@@ -211,6 +240,31 @@ def countPeople(state, pid):
     return state.resources["P"][pid] + state.resources["A"][pid] +state.resources["S"][pid] 
 
 def eval(state):
+    pid = state.myid
+    eid = getEnemyId(pid)
+    tid = getCurrentTrendId(state.season_id)
+
+    # if final node, calculate only score
+    if state.finished:
+        score = (getTotalScore(state, pid) - getTotalScore(state, eid))*100
+        if state.myid == state.current_player_id:
+            return -score
+        return score
+
+    score = 0
+    score += state.resources["M"][pid]
+    score += state.resources["R"][pid] * 2
+    score -= state.resources["D"][pid] * 5
+    if (state.scores[tid][pid] - state.scores[tid][eid]) > 0:
+        score += 100
+    
+    #score += (getTotalScore(state, pid) - getTotalScore(state, eid)) * 5
+
+    if state.resources["M"][state.myid] < 1:
+        score -= 5
+    
+
+    """
     # Read all trees
     if state.finished:
         score = getTotalScore(state, state.myid) - getTotalScore(state, getEnemyId(state.myid))
@@ -222,19 +276,26 @@ def eval(state):
     pid = state.current_player_id
     eid = getEnemyId(pid)
     score = 0
-    score += (state.resources["M"][pid] - state.resources["M"][eid])
-    score += (state.resources["R"][pid] - state.resources["R"][eid]) * 2
-    score -= state.resources["D"][pid] * 5
-    score += (getTotalScore(state, pid) - getTotalScore(state ,eid)) * 6
-
+    #score += (state.resources["M"][pid] - state.resources["M"][eid])
+    #score += (state.resources["R"][pid] - state.resources["R"][eid]) * 2
+    #score -= state.resources["D"][pid] * 5
+    score += getTotalScore(state, pid) * 20
+    """
+    """
     if 2 < state.resources["M"][pid]:
         score += 20
 
     # no employ
     if 2 < countPeople(state, pid):
         score -= 100
+    """
+    if state.myid == state.current_player_id:
+        #print(-score)
+        return -score
 
+    #print(score)
     return score
+    
 
 
 def isFinished(state):
@@ -246,8 +307,7 @@ def hasHoldingWorker(state, pid):
             return True
     return False
 
-
-def goNextSeason(state):
+def doProduction(state):
     # Calculate r_seminar point
     p = 0
     a = 0
@@ -340,6 +400,34 @@ def goNextSeason(state):
     # board clear
     state.resetBoard()
 
+def doPayment(state):
+    for pid in [0, 1]:
+        fee = 0
+        fee += state.resources["A"][pid] * 3
+        fee += state.resources["S"][pid]
+        state.resources["M"][pid] -= fee
+        if state.resources["M"][pid] < 0:
+            state.resources["D"][pid] -= state.resources["M"][pid] 
+            state.resources["M"][pid] = 0
+
+def doAwarding(state):
+    current_trend_id = getCurrentTrendId(state.season_id)
+    if state.trend_id == current_trend_id:
+        p = 8
+    else:
+        p = 5
+    if state.scores[current_trend_id][0] < state.scores[current_trend_id][1]:
+        state.resources["M"][1] += p
+    elif state.scores[current_trend_id][0] > state.scores[current_trend_id][1]:
+        state.resources["M"][0] += p
+    else:
+        # TODO: if same point, all members get money?
+        state.resources["M"][0] += p
+        state.resources["M"][1] += p
+
+"""
+def goNextSeason(state):
+
     # if 6b, finish this game.
     if "6b" == state.season_id:
         state.finished = True
@@ -350,33 +438,14 @@ def goNextSeason(state):
     # after 1b, 2b, 3b, 4b, 5b, 6b
     if "b" in state.season_id:
         #print("awarded")
-        current_trend_id = getCurrentTrendId(state.season_id)
-        if state.trend_id == current_trend_id:
-            p = 8
-        else:
-            p = 5
-        if state.scores[current_trend_id][0] < state.scores[current_trend_id][1]:
-            state.resources["M"][1] += p
-        elif state.scores[current_trend_id][0] > state.scores[current_trend_id][1]:
-            state.resources["M"][0] += p
-        else:
-            # TODO: if same point, all members get money?
-            state.resources["M"][0] += p
-            state.resources["M"][1] += p
+        pass
 
-    # Pay
-    for pid in [0, 1]:
-        fee = 0
-        fee += state.resources["A"][pid] * 3
-        fee += state.resources["S"][pid]
-        state.resources["M"][pid] -= fee
-        if state.resources["M"][pid] < 0:
-            state.resources["D"][pid] -= state.resources["M"][pid] 
-            state.resources["M"][pid] = 0
+
 
     # Common procedure
     state.setSeasonId(getNextSeasonId(state.season_id))
     state.setCurrentPlayerId(state.start_player_id)
+"""
 
 """
 @return True ok
@@ -448,60 +517,104 @@ def play(state, action):
         pass
 
     # common procedure
-    state.last_action = action  # Set action
+    state.addAction(action)  # Set action
     state.resources[action.kind_id][action.player_id] -=1   # Decrease holding worker 
-    state.board[action.action_id].append(Worker(action.player_id, action.kind_id))
+    state.board[action.action_id].append(Worker(action.player_id, action.kind_id)) #Put to board
 
-    # worker check
-    if not hasHoldingWorker(state, getEnemyId(state.current_player_id)):
-        # Both player don't have worker, go next season.
-        if not hasHoldingWorker(state, state.current_player_id):
-            # Go next season if need
-            goNextSeason(state)
-        # if next player hasn't worker, same player plays.
+    # Check worker
+    cpid = action.player_id
+    npid = getEnemyId(action.player_id)
+    if hasHoldingWorker(state, npid):
+        # other player plays.
+        state.setCurrentPlayerId(npid)
+        state.setPlayerChanged(True)
+
+    elif hasHoldingWorker(state, cpid):
+        # sampe player plays again.
+        state.setPlayerChanged(False)
+        pass
+        
     else:
-        # Go next action
-        state.setCurrentPlayerId(getEnemyId(state.current_player_id))
+        # next season
+        doProduction(state)
+        
+        if state.season_id == "6b":
+            state.postFinished()
+        else:
+            # if need, get award
+            if "b" in state.season_id:
+                doAwarding(state)
+            
+            # if need, pay
+            doPayment(state)
+            
+        state.postSeasonChanged()
 
     return True
+
+    
 
 
 """
 This method uses for extending node.
 @return children
 """
-def extend(state):
+def extend(s):
+    # stop to execute recursively
+    if s.season_changed:
+        # cannot expand
+        return None
+
     children = []
-    
-    # Get all available actions.
-    for kind_id in ["P", "A", "S"]:         # Select kind_id
-        if state.resources[kind_id][state.current_player_id] <= 0: # No worker
-            continue
-        for action_id in ACTION_ID_LIST:    # Select action_id
-            if action_id == "5-3":
-                for tid in ["T1", "T2", "T3"]:
-                    action = Action(state.current_player_id, action_id, kind_id=kind_id, trend_id=tid)
-                    tmp = copy.deepcopy(state)
-                    if play(tmp, action):
-                        children.append(tmp)
-            else:
-                action = Action(state.current_player_id, action_id, kind_id=kind_id)
-                tmp = copy.deepcopy(state)
-                if play(tmp, action):
-                    children.append(tmp)
-    
+    queue = Queue.Queue()
+    queue.put(s)
+    while not queue.empty():
+        state = queue.get()
+        # make action lists
+        action_list = []
+        for kind_id in ["P", "A", "S"]:         # Select kind_id
+            if state.resources[kind_id][state.current_player_id] <= 0: # No worker
+                continue
+            for action_id in ACTION_ID_LIST:    # Select action_id
+                if action_id == "5-3":
+                    for tid in ["T1", "T2", "T3"]:
+                        action = Action(state.current_player_id, action_id, kind_id=kind_id, trend_id=tid)
+                        action_list.append(action)
+                else:
+                    action = Action(state.current_player_id, action_id, kind_id=kind_id)
+                    action_list.append(action)
+        # Actions apply 
+        for action in action_list:
+            state_copy = copy.deepcopy(state)
+            if play(state_copy, action):
+                # success
+                if state.player_changed:
+                    # Go next player.
+                    children.append(state_copy)
+                else:
+                    # Same player plays again.
+                    queue.put(state_copy)
+                
     # return children
     return children
     
 
 
 def print_assumption(state, depth=1):
+    if state is None:
+        return  
+    
+    print(depth, state.actionsToStr(), -eval(state))
+    print_assumption(state.assumption, depth+1)
+
+    """
     if state.assumption is None:
         return
-    print(depth, str(state.assumption.last_action), eval(state))
+    print(depth, state.assumption.actionsToStr(), -eval(state))
     print(str(state.assumption))
     print("")
     print_assumption(state.assumption, depth+1)
+    """
 
 
 def alphabeta(state, depth, alpha, beta):
@@ -510,14 +623,14 @@ def alphabeta(state, depth, alpha, beta):
         return eval(state)
 
     # end check
-    if isFinished(state):
-        return eval(state)
+    #if isFinished(state):
+    #    return eval(state)
 
     # Extend children nodes
     children = extend(state)
 
     if not children:
-        print("Cannot extend")
+        #print("Cannot extend")
         return eval(state)
 
     for i, child in enumerate(children):
@@ -527,6 +640,7 @@ def alphabeta(state, depth, alpha, beta):
         if alpha < score:
             alpha = score
             state.assumption = child # predicate next action
+            state.setActions(child.getActions())
         if alpha > beta:
             return alpha
 
@@ -558,6 +672,7 @@ def solve(response):
         solve.pid = int(response.instructions[1])
         solve.eid = getEnemyId(solve.pid)
         solve.state = GameState(solve.pid)
+        print("my_id", solve.pid)
         return None
     elif response.code == 200:
         # 200 OK -> NULL
@@ -575,7 +690,7 @@ def solve(response):
         # (ex. 205 PLAY 0 S 2-1)
         score = alphabeta(solve.state, ALPHABETA_DEPTH, float('-inf'), float('inf'))
         print_assumption(solve.state)
-        action = solve.state.assumption.last_action
+        action = solve.state.assumption.getLastAction()
         #f = open("log.log", "a")
         #f.write(str(action)+"\n")
         #f.close()
@@ -635,7 +750,7 @@ TEST CODE
 pid = 0
 state = GameState(pid)
 state.current_player_id = pid
-score = alphabeta(state, ALPHABETA_DEPTH, float('-inf'), float('inf'))
+score = alphabeta(state, 10, float('-inf'), float('inf'))
 print_assumption(state, 1)
 exit(1)
 """
@@ -645,9 +760,19 @@ exit(1)
 System main Loop
 Do not revisse here!!!
 """
-# Connect to server 
+# argment check
+if len(sys.argv) >= 3:
+    ip = sys.argv[2]
+else:
+    ip = SERVER_IP
+if len(sys.argv) >= 4:
+    port = sys.argv[3]
+else:
+    port = SERVER_PORT
+
+# Connect to server
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client.connect((SERVER_IP, SERVER_PORT)) 
+client.connect((ip, port)) 
 # main loop
 while True:
     response_strings = client.recv(4096)
