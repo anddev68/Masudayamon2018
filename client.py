@@ -19,7 +19,7 @@ ACTION_ID_LIST = [
     "3-1", "3-2", "3-3",
     "4-1", "4-2", "4-3",
     "5-1", "5-2", "5-3",
-#    "6-1", "6-2"
+    "6-1", "6-2"
 ]
 SEASON_ID_LIST = ["1a", "1b", "2a", "2b", "3a", "3b", "4a", "4b", "5a", "5b", "6a", "6b"]
 KIND_ID_LIST = ["P", "A", "S"]
@@ -72,7 +72,7 @@ to output Graph
 class Logger:
     #LOG_HEADER = ["T1", "T2", "T3", "P", "A", "S", "M", "R", "D"]
     def __init__(self):
-        if sys.argv[1]:
+        if len(sys.argv) >= 2:
             self.filename = sys.argv[1]
         else:
             self.filename = "player.log"
@@ -251,17 +251,54 @@ def eval(state):
             return -score
         return score
 
+    # normal evaluate
+    # We configure, between playing P 2-1 and S 5-1 are same value.
+    #   pay $2 (-2point) get R3 (6point) = total 4point
+    #   get $3 (3point) 
     score = 0
     score += state.resources["M"][pid]
+    score += state.resources["R"][pid] * 3
+    score -= state.resources["D"][pid] * 5
+    if state.resources["M"][pid] < 1:
+        score -= 100
+    if (state.scores[tid][pid] - state.scores[tid][eid]) > 0:
+        score += 100
+
+    score -= state.resources["M"][eid]
+    score -= state.resources["R"][eid] * 3
+    score += state.resources["D"][eid] * 5
+    if state.resources["M"][eid] < 1:
+        score += 100
+    if (state.scores[tid][eid] - state.scores[tid][pid]) > 0:
+        score -= 100
+
+    if state.resources["A"][pid] > 0:
+        score += 50
+
+    if state.resources["A"][eid] > 0:
+        score -= 50
+
+    return score
+
+    """
+    score = 0
+    score += state.resources["M"][pid] 
     score += state.resources["R"][pid] * 2
+    score -= state.resources["R"][eid] * 2
     score -= state.resources["D"][pid] * 5
     if (state.scores[tid][pid] - state.scores[tid][eid]) > 0:
         score += 100
-    
-    #score += (getTotalScore(state, pid) - getTotalScore(state, eid)) * 5
 
-    if state.resources["M"][state.myid] < 1:
-        score -= 5
+    if state.resources["M"][state.current_player_id] < 1:
+        score -= 100
+
+    if state.myid == state.current_player_id:
+        #print(-score)
+        return -score
+
+    #print(score)
+    return score
+    """
     
 
     """
@@ -289,13 +326,8 @@ def eval(state):
     if 2 < countPeople(state, pid):
         score -= 100
     """
-    if state.myid == state.current_player_id:
-        #print(-score)
-        return -score
-
-    #print(score)
-    return score
     
+
 
 
 def isFinished(state):
@@ -549,6 +581,7 @@ def play(state, action):
             doPayment(state)
             
         state.postSeasonChanged()
+        state.setCurrentPlayerId(state.start_player_id)
 
     return True
 
@@ -563,6 +596,7 @@ def extend(s):
     # stop to execute recursively
     if s.season_changed:
         # cannot expand
+        #print(eval(s), str(s), s.actionsToStr())
         return None
 
     children = []
@@ -571,6 +605,7 @@ def extend(s):
     while not queue.empty():
         state = queue.get()
         # make action lists
+        # TODO: do outside while loop
         action_list = []
         for kind_id in ["P", "A", "S"]:         # Select kind_id
             if state.resources[kind_id][state.current_player_id] <= 0: # No worker
@@ -588,8 +623,11 @@ def extend(s):
             state_copy = copy.deepcopy(state)
             if play(state_copy, action):
                 # success
-                if state.player_changed:
+                if state_copy.player_changed:
                     # Go next player.
+                    if state_copy.season_changed:
+                        #print(state_copy.actionsToStr(), eval(state_copy))
+                        pass
                     children.append(state_copy)
                 else:
                     # Same player plays again.
@@ -603,8 +641,9 @@ def extend(s):
 def print_assumption(state, depth=1):
     if state is None:
         return  
-    
-    print(depth, state.actionsToStr(), -eval(state))
+
+    print(depth, state.actionsToStr(), eval(state))
+    print(str(state))
     print_assumption(state.assumption, depth+1)
 
     """
@@ -622,32 +661,41 @@ def alphabeta(state, depth, alpha, beta):
     if depth==0:
         return eval(state)
 
-    # end check
-    #if isFinished(state):
-    #    return eval(state)
-
     # Extend children nodes
     children = extend(state)
 
+    # There are no children.
     if not children:
         #print("Cannot extend")
-        return eval(state)
+        return eval(state)    
 
-    for i, child in enumerate(children):
-        if depth == ALPHABETA_DEPTH:
-          print("Progress", i+1, len(children))
-        score = -alphabeta(child, depth-1, -beta, -alpha)
-        if alpha < score:
-            alpha = score
-            state.assumption = child # predicate next action
-            state.setActions(child.getActions())
-        if alpha > beta:
-            return alpha
+    if state.current_player_id == state.myid:
+        # It's my turn
+        for i, child in enumerate(children):
+            if depth == ALPHABETA_DEPTH:
+                print("Progress", i+1, len(children))
+            score = alphabeta(child, depth-1, alpha, beta)
+            if alpha < score: # replace big value and select child node
+                alpha = score
+                state.assumption = child
+                state.setActions(child.getActions())    
+            if alpha >= beta:
+                break # beta cut
+        return alpha
+    else:
+        # It's enemies turn
+        for i, child in enumerate(children):
+            if depth == ALPHABETA_DEPTH:
+                print("Progress", i+1, len(children)) 
+            score = alphabeta(child, depth-1, alpha, beta)
+            if score < beta: # replace smaller value and select child node
+                beta = score
+                state.assumption = child
+                state.setActions(child.getActions())
 
-
-    return alpha
-
-
+            if alpha >= beta:
+                break #alpha cut
+        return beta
 
 
 
@@ -689,6 +737,7 @@ def solve(response):
         # start to think what should I do.
         # (ex. 205 PLAY 0 S 2-1)
         score = alphabeta(solve.state, ALPHABETA_DEPTH, float('-inf'), float('inf'))
+        print("\n=============================\n")
         print_assumption(solve.state)
         action = solve.state.assumption.getLastAction()
         #f = open("log.log", "a")
