@@ -16,6 +16,10 @@ We haven't implemented cheking the arguments. Please check these parameter yours
 Otherwise, not-expected error will be occured.
 
 ## History
+## ver 1.0.4
+bug fix
+    - make actions "1-1 S"
+
 ### ver 1.0.3
 apply 6-1, 6-2
 

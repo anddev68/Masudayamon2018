@@ -96,6 +96,27 @@ class Logger:
             f.write("\n")
             f.close()
 
+    def output_score(self, scores):
+        for i in [0,1]:
+            f = open("{0}_{1}".format(i, self.filename), "a")
+            f.write("{0} {1} {2} {3} {4} {5} {6} {7} {8} {9} {10}".format(
+                "fin",
+                "N/A",
+                "N/A",
+                "N/A",
+                "N/A",
+                "N/A",
+                "N/A",
+                "N/A",
+                "N/A",
+                "N/A",
+                scores[i]
+            ))
+            f.write("\n")
+            f.close()
+
+
+
 """
 Game State Class
 """
@@ -110,7 +131,7 @@ class GameState:
         self.trend_id = "T0"   # as string T1, T2, T3
         self.start_player_id = 0  # as int
         self.current_player_id = 0
-        self.__last_actions = []
+        self.last_action = None
         self.assumption = None
         self.finished = False
         self.season_changed = False
@@ -119,6 +140,11 @@ class GameState:
             "T1": [0, 0],
             "T2": [0, 0],
             "T3": [0, 0]
+        }
+        self.max_workers = {
+            "P": [1, 1],
+            "A": [0, 0],
+            "S": [1, 1],
         }
         self.resources = {
             "P": [1, 1],
@@ -186,22 +212,11 @@ class GameState:
     def postFinished(self):
         self.finished = True
 
-    def actionsToStr(self):
-        if len(self.__last_actions) == 1:
-            return str(self.__last_actions[0])
-        return "->".join(map(str, self.__last_actions))
+    def resetMaxWorkers(self):
+        for key in self.max_workers.keys():
+            self.max_workers[key][0] = 0
+            self.max_workers[key][1] = 0
 
-    def addAction(self, action):
-        self.__last_actions.append(action)
-
-    def getLastAction(self):
-        return self.__last_actions[0]
-    
-    def setActions(self, actions):
-        self.__last_actions = actions
-
-    def getActions(self):
-        return self.__last_actions
 
 # raw message to Message class
 def convertToMessage(raw_message):
@@ -246,10 +261,8 @@ def eval(state):
 
     # if final node, calculate only score
     if state.finished:
-        score = (getTotalScore(state, pid) - getTotalScore(state, eid))*100
-        if state.myid == state.current_player_id:
-            return -score
-        return score
+        diff = (getTotalScore(state, pid) - getTotalScore(state, eid))
+        return diff
 
     # normal evaluate
     # We configure, between playing P 2-1 and S 5-1 are same value.
@@ -272,11 +285,11 @@ def eval(state):
     if (state.scores[tid][eid] - state.scores[tid][pid]) > 0:
         score -= 100
 
-    if state.resources["A"][pid] > 0:
-        score += 50
+    #if state.resources["A"][pid] > 0:
+    #    score += 50
 
-    if state.resources["A"][eid] > 0:
-        score -= 50
+    #if state.resources["A"][eid] > 0:
+    #    score -= 50
 
     return score
 
@@ -351,8 +364,11 @@ def doProduction(state):
             a += 1
         elif worker.kind_id == "S":
             s += 1
-    # TODO: round? floor?
+    # round
     r_seminar =  int(s/2*(a+p))
+
+    # clear max_worker
+    state.resetMaxWorkers()
 
     # Calcualate production by worker
     for key, value in state.board.items():   
@@ -428,6 +444,7 @@ def doProduction(state):
             
             # collect worker
             state.resources[worker.kind_id][worker.player_id] += 1
+            state.max_workers[worker.kind_id][worker.player_id] += 1
 
     # board clear
     state.resetBoard()
@@ -549,7 +566,7 @@ def play(state, action):
         pass
 
     # common procedure
-    state.addAction(action)  # Set action
+    state.last_action = action  # Set action
     state.resources[action.kind_id][action.player_id] -=1   # Decrease holding worker 
     state.board[action.action_id].append(Worker(action.player_id, action.kind_id)) #Put to board
 
@@ -592,58 +609,63 @@ def play(state, action):
 This method uses for extending node.
 @return children
 """
-def extend(s):
+def extend(state):
     # stop to execute recursively
-    if s.season_changed:
+    if state.season_changed:
         # cannot expand
         #print(eval(s), str(s), s.actionsToStr())
         return None
 
     children = []
-    queue = Queue.Queue()
-    queue.put(s)
-    while not queue.empty():
-        state = queue.get()
-        # make action lists
-        # TODO: do outside while loop
-        action_list = []
-        for kind_id in ["P", "A", "S"]:         # Select kind_id
-            if state.resources[kind_id][state.current_player_id] <= 0: # No worker
+
+    # make action lists
+    # TODO: do outside while loop
+    action_list = []
+    for kind_id in ["P", "S", "A"]:         # Select kind_id
+        if state.resources[kind_id][state.current_player_id] <= 0: # No worker
+            continue
+        # edagari
+        if 0 < state.resources["P"][state.current_player_id] and kind_id == "A": # Put P first
+            if 2 < state.resources["M"][state.current_player_id] or 3 < state.resources["R"]: # if enough money or R
                 continue
-            for action_id in ACTION_ID_LIST:    # Select action_id
-                if action_id == "5-3":
-                    for tid in ["T1", "T2", "T3"]:
-                        action = Action(state.current_player_id, action_id, kind_id=kind_id, trend_id=tid)
-                        action_list.append(action)
-                else:
-                    action = Action(state.current_player_id, action_id, kind_id=kind_id)
+
+        for action_id in ACTION_ID_LIST:    # Select action_id
+            if action_id == "1-1":
+                if state.max_workers["S"][state.current_player_id] < 2 and kind_id == "S":
+                    # ignore put S to seminar
+                    continue
+            if action_id == "5-3":
+                for tid in ["T1", "T2", "T3"]:
+                    action = Action(state.current_player_id, action_id, kind_id=kind_id, trend_id=tid)
                     action_list.append(action)
-        # Actions apply 
-        for action in action_list:
-            state_copy = copy.deepcopy(state)
-            if play(state_copy, action):
-                # success
-                if state_copy.player_changed:
-                    # Go next player.
-                    if state_copy.season_changed:
-                        #print(state_copy.actionsToStr(), eval(state_copy))
-                        pass
-                    children.append(state_copy)
-                else:
-                    # Same player plays again.
-                    queue.put(state_copy)
+            else:
+                action = Action(state.current_player_id, action_id, kind_id=kind_id)
+                action_list.append(action)
+    
+    # Actions apply 
+    for action in action_list:
+        state_copy = copy.deepcopy(state)
+        if play(state_copy, action):
+            # success
+            children.append(state_copy)
+
+    # no actions, but workers remain.
+    if not action_list or not children:
+        print("No action_list was occured. Using 1-1 S.")
+        state_copy = copy.deepcopy(state)
+        action = Action(state.current_player_id, "1-1", "S")
+        if play(state_copy, action):
+            children.append(state_copy)
+
                 
     # return children
     return children
-    
-
 
 def print_assumption(state, depth=1):
-    if state is None:
-        return  
-
-    print(depth, state.actionsToStr(), eval(state))
-    print(str(state))
+    if state.assumption is None:
+        return
+    print(depth, str(state.assumption.last_action), eval(state))
+    #print(str(state.assumption))
     print_assumption(state.assumption, depth+1)
 
     """
@@ -678,7 +700,7 @@ def alphabeta(state, depth, alpha, beta):
             if alpha < score: # replace big value and select child node
                 alpha = score
                 state.assumption = child
-                state.setActions(child.getActions())    
+                #state.setActions(child.getActions())    
             if alpha >= beta:
                 break # beta cut
         return alpha
@@ -691,7 +713,7 @@ def alphabeta(state, depth, alpha, beta):
             if score < beta: # replace smaller value and select child node
                 beta = score
                 state.assumption = child
-                state.setActions(child.getActions())
+                #state.last_action = child.action
 
             if alpha >= beta:
                 break #alpha cut
@@ -737,9 +759,10 @@ def solve(response):
         # start to think what should I do.
         # (ex. 205 PLAY 0 S 2-1)
         score = alphabeta(solve.state, ALPHABETA_DEPTH, float('-inf'), float('inf'))
-        print("\n=============================\n")
+        print("\n=============================")
         print_assumption(solve.state)
-        action = solve.state.assumption.getLastAction()
+        print("===============================")
+        action = solve.state.assumption.last_action
         #f = open("log.log", "a")
         #f.write(str(action)+"\n")
         #f.close()
@@ -761,8 +784,11 @@ def solve(response):
         # 211 RESOURCES [01] P[01] A[01] S[0-9]+ M[1-9]*[0-9]+ R[1-9]*[0-9]+ D[0-9]+
         id = int(response.instructions[1])
         solve.state.resources["P"][id] = int(response.instructions[2][1:])
+        solve.state.max_workers["P"][id] = int(response.instructions[2][1:])
         solve.state.resources["A"][id] = int(response.instructions[3][1:])
+        solve.state.max_workers["A"][id] = int(response.instructions[3][1:])
         solve.state.resources["S"][id] = int(response.instructions[4][1:])
+        solve.state.max_workers["S"][id] = int(response.instructions[4][1:])
         solve.state.resources["M"][id] = int(response.instructions[5][1:])
         solve.state.resources["R"][id] = int(response.instructions[6][1:])
         solve.state.resources["D"][id] = int(response.instructions[7][1:])
@@ -773,6 +799,7 @@ def solve(response):
         kind_id = response.instructions[2][0]
         pid = int(response.instructions[2][1])
         solve.state.board[action_id].append(Worker(pid, kind_id))
+        solve.state.max_workers[kind_id][pid] += 1
         pass
     elif response.code == 213:
         # 213 SEASON [1-6][ab]
@@ -790,7 +817,12 @@ def solve(response):
     elif response.code == 216:
         # 216 STAETPLAYER [01]
         solve.state.setStartPlayerId(int(response.instructions[1]))
-
+    elif response.code == 503:
+        # 503 SCORE 10 20
+        scores = [0, 0]
+        scores[0] = (int(response.instructions[1]))
+        scores[1] = (int(response.instructions[2]))
+        solve.logger.output_score(scores)
 
 """
 TEST CODE
