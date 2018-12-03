@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 
 # The Laboratory AI
+# revised for Masudayamon2018
 # @Author Hideki Kano
 
 import socket
