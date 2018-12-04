@@ -1,5 +1,9 @@
 # -*- coding:utf-8 -*-
 
+from classes.GameState import GameState
+from classes.Message import Message
+from ai import alphabeta
+
 """
 Here is a solver for making the message replying to response.
 """
@@ -9,7 +13,7 @@ def solve(response):
     solve.eid = vars(solve).setdefault('eid',-1)
     solve.state = vars(solve).setdefault('state', None)
     #solve.confprm_once = vars(solve).setdefault('confprm_once', True)
-    solve.logger = vars(solve).setdefault('logger', Logger())
+    #solve.logger = vars(solve).setdefault('logger', Logger())
 
     if response.code == 100:
         # 100 HELLO -> 101 NAME [NAME]
@@ -99,4 +103,4 @@ def solve(response):
         scores = [0, 0]
         scores[0] = (int(response.instructions[1]))
         scores[1] = (int(response.instructions[2]))
-        solve.logger.output_score(scores)
+        #solve.logger.output_score(scores)
