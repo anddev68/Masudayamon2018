@@ -11,11 +11,12 @@ getNextActionで次の手を出力する．
 
 from game.GameState import GameState
 from game.Action import Action
+from game.core import play
 import queue
+import copy
 
-from game.core import extend
-from gui.TreeViewer import TreeViewer
-import queue
+
+#from gui.TreeViewer import TreeViewer
 
 ALPHABETA_DEPTH = 2
 
@@ -37,7 +38,7 @@ KIND_ID_LIST = ["P", "A", "S"]
 """
 def _eval(state):
     #pid = state.myid
-    eid = getEnemyId(pid)
+    #eid = getEnemyId(pid)
     # tid = getCurrentTrendId(state.season_id)
     return state.resources["M"][state.myid]
 
@@ -102,14 +103,20 @@ def _extend(state):
     if state.season_id == "1a":
         if state.current_player_id == 0: # 先行
             if 0 < state.resources["P"][0]: #初手
-                return Action(0, "1-1", kind_id="P")
+                action = Action(0, "1-1", kind_id="P")
             else: # 2手目
-                return Action(0, "1-1", kind_id="S")
+                action = Action(0, "1-1", kind_id="S")
         else: #後攻
             if 0 < state.resources["P"][1]: #初手
-                return Action(1, "1-1", kind_id="P")
+                # 1-1 Sもありっぽい
+                action = Action(1, "5-1", kind_id="P")
             else: # 2手目
-                return Action(1, "1-1", kind_id="S")        
+                action = Action(1, "1-1", kind_id="S")
+        state_copy = copy.deepcopy(state)
+        if play(state_copy, action):
+            return [state_copy]
+        print("Select error.")
+        exit(-1)
 
     children = []
     action_list = []
@@ -154,12 +161,13 @@ class IntelligenceIO:
         
         print("=========================")
         for child in state.children:
-            print(str(child.last_action))
+            print(str(child.last_action), _eval(child))
         print("=========================")
 
         print("thinking was finished.")
         print("Warning: Default Action was used.")
-        self.nextAction = Action(self.playerid, "1-1", "S")
+        #self.nextAction = Action(self.playerid, "1-1", "S")
+        self.nextAction = state.children[0].last_action
         pass
     
 

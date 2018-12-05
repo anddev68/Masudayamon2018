@@ -203,7 +203,7 @@ def doProduction(state):
 次のターンへ進める
 トリガー: playが打たれたとき
 """
-def nextTurn(state):
+def nextTurn(state, action):
     cpid = action.player_id
     npid = getEnemyId(action.player_id)
     # 次のプレイヤーのワーカーが残っていれば次のプレイヤー
@@ -307,7 +307,7 @@ def play(state, action):
     state.board[action.action_id].append(Worker(action.player_id, action.kind_id)) #Put to board
 
     # 次のフェーズへ移行
-    nextTurn(state)
+    nextTurn(state, action)
     return True
 
 
