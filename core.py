@@ -7,7 +7,6 @@
 from classes.GameState import GameState
 from classes.Action import Action
 
-# TODO privateメソッドにしてよさそう
 def getCurrentTrendId(season_id):
     if season_id in ["1a", "1b", "4a", "4b"]:
         return "T1"
@@ -17,7 +16,6 @@ def getCurrentTrendId(season_id):
         return "T3"
     print("Convert Error, Unexpected season_id.")
     exit(1)
-
 
 def getEnemyId(pid):
     if pid==0:

@@ -1,10 +1,12 @@
 # -*- coding:utf-8 -*-
 
 CLIENT_NAME = "Alice"
+ALPHABETA_DEPTH = 8
 
 from classes.GameState import GameState
 from classes.Message import Message
 from ai import alphabeta
+from core import getEnemyId
 
 """
 204の時だけ，AIの思考に入る
@@ -19,10 +21,10 @@ def _think(state):
     print("===============================")
     action = state.assumption.last_action
 
-
 """
 サーバからのメッセージに対して適切な応答を返す
-自分の番が来たらMULTILINEで情報取得し直しているので，TRENDとかPLAYEDの処理は不要かと
+自分の番が来たらMULTILINEで情報取得し直しているので，
+TRENDとかPLAYEDの処理は不要と判断
 """
 def solve(message):
     # static values

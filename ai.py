@@ -1,7 +1,6 @@
 # -*- coding:utf-8 -*-
 
 
-ALPHABETA_DEPTH = 8
 ACTION_ID_LIST = [
     "1-1", 
     "2-1", "2-2", "2-3",
