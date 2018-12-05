@@ -4,8 +4,12 @@ CLIENT_NAME = "Alice"
 ALPHABETA_DEPTH = 8
 
 from game.GameState import GameState
+from game.Worker import Worker
 from network.Message import Message
+from ai.IntelligenceIO import IntelligenceIO as aiIO
 
+# AI生成
+ai = aiIO.create()
 
 """
 204の時だけ，AIの思考に入る
@@ -13,12 +17,9 @@ from network.Message import Message
 @return action: Action どこに何を打つか
 """
 def _think(state):
-    print(str(state))
-    score = alphabeta(state, ALPHABETA_DEPTH, float('-inf'), float('inf'))
-    print("\n=============================")
-    #print_assumption(solve.state)
-    print("===============================")
-    action = state.assumption.last_action
+    ai.startThinking(state)
+    action = ai.getNextAction()
+    return action
 
 """
 サーバからのメッセージに対して適切な応答を返す

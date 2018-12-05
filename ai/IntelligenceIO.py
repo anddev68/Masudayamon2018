@@ -1,4 +1,17 @@
 # -*- coding:utf-8 -*-
+# InteligenceIO.py
+
+"""
+startThiningで思考を開始して，
+getNextActionで次の手を出力する．
+
+このAIはゲーム開始時に読み込まれることが想定されています．
+毎回使い回す処理やパラメータはinit内に記述推奨
+"""
+
+from game.GameState import GameState
+from game.Action import Action
+import queue
 
 
 ACTION_ID_LIST = [
@@ -11,10 +24,7 @@ ACTION_ID_LIST = [
 ]
 SEASON_ID_LIST = ["1a", "1b", "2a", "2b", "3a", "3b", "4a", "4b", "5a", "5b", "6a", "6b"]
 KIND_ID_LIST = ["P", "A", "S"]
-
-import queue
-from classes.GameState import GameState
-
+ALPHABETA_DEPTH = 8
 
 
 def eval(state):
@@ -56,53 +66,6 @@ def eval(state):
 
     return score
 
-    """
-    score = 0
-    score += state.resources["M"][pid] 
-    score += state.resources["R"][pid] * 2
-    score -= state.resources["R"][eid] * 2
-    score -= state.resources["D"][pid] * 5
-    if (state.scores[tid][pid] - state.scores[tid][eid]) > 0:
-        score += 100
-
-    if state.resources["M"][state.current_player_id] < 1:
-        score -= 100
-
-    if state.myid == state.current_player_id:
-        #print(-score)
-        return -score
-
-    #print(score)
-    return score
-    """
-    
-
-    """
-    # Read all trees
-    if state.finished:
-        score = getTotalScore(state, state.myid) - getTotalScore(state, getEnemyId(state.myid))
-        if state.current_player_id == state.myid:
-            return score * 1000
-        else:
-            return (-score) * 1000
-    
-    pid = state.current_player_id
-    eid = getEnemyId(pid)
-    score = 0
-    #score += (state.resources["M"][pid] - state.resources["M"][eid])
-    #score += (state.resources["R"][pid] - state.resources["R"][eid]) * 2
-    #score -= state.resources["D"][pid] * 5
-    score += getTotalScore(state, pid) * 20
-    """
-    """
-    if 2 < state.resources["M"][pid]:
-        score += 20
-
-    # no employ
-    if 2 < countPeople(state, pid):
-        score -= 100
-    """
-    
 
 
 
@@ -180,15 +143,6 @@ def print_assumption(state, depth=1):
     #print(str(state.assumption))
     print_assumption(state.assumption, depth+1)
 
-    """
-    if state.assumption is None:
-        return
-    print(depth, state.assumption.actionsToStr(), -eval(state))
-    print(str(state.assumption))
-    print("")
-    print_assumption(state.assumption, depth+1)
-    """
-
 
 def alphabeta(state, depth, alpha, beta):
     # use depth limit
@@ -234,5 +188,37 @@ def alphabeta(state, depth, alpha, beta):
 
 
 
+class IntelligenceIO:
 
+    def __init__(self):
+        self.playerId = -1
+        self.nextAction = None
+        print("IntelligenceIO was initialized.")
+        pass
 
+    """
+    thinkingでstateがもらえるので，状態を判断する
+    """
+    def startThinking(self, state):
+        print("start thinking.")
+        self.playerid = state.current_player_id
+        #print(str(state))
+        #score = alphabeta(state, ALPHABETA_DEPTH, float('-inf'), float('inf'))
+        #print("\n=============================")
+        #print_assumption(solve.state)
+        #print("===============================")
+        #action = state.assumption.last_action
+        print("thinking was finished.")
+        print("Warning: Default Action was used.")
+        self.nextAction = Action(self.playerid, "1-1", "S")
+        pass
+    
+    """
+    getNextAction使って次打つべき手を返してあげてね
+    """
+    def getNextAction(self):
+        return self.nextAction
+
+    @staticmethod
+    def create():
+        return IntelligenceIO()
