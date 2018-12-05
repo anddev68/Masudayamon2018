@@ -4,8 +4,10 @@
 """
 ゲームのコアとなる機能を記述するモジュール
 """
-from classes.GameState import GameState
-from classes.Action import Action
+from game.GameState import GameState
+from game.Action import Action
+from game.Worker import Worker
+import copy
 
 def getCurrentTrendId(season_id):
     if season_id in ["1a", "1b", "4a", "4b"]:
@@ -292,6 +294,80 @@ def play(state, action):
         state.setCurrentPlayerId(state.start_player_id)
 
     return True
+
+
+
+
+ACTION_ID_LIST = [
+    "1-1", 
+    "2-1", "2-2", "2-3",
+    "3-1", "3-2", "3-3",
+    "4-1", "4-2", "4-3",
+    "5-1", "5-2", "5-3",
+    "6-1", "6-2"
+]
+SEASON_ID_LIST = ["1a", "1b", "2a", "2b", "3a", "3b", "4a", "4b", "5a", "5b", "6a", "6b"]
+KIND_ID_LIST = ["P", "A", "S"]
+
+
+"""
+現在の盤面を見て，打てる可能性があるものに関して全て打ち込む
+"""
+def extend(state):
+    # stop to execute recursively
+    if state.season_changed:
+        # cannot expand
+        #print(eval(s), str(s), s.actionsToStr())
+        return None
+
+    children = []
+
+    # make action lists
+    # TODO: do outside while loop
+    action_list = []
+    for kind_id in ["P", "S", "A"]:         # Select kind_id
+        if state.resources[kind_id][state.current_player_id] <= 0: # No worker
+            continue
+        # edagari
+        if 0 < state.resources["P"][state.current_player_id] and kind_id == "A": # Put P first
+            if 2 < state.resources["M"][state.current_player_id] or 3 < state.resources["R"]: # if enough money or R
+                continue
+
+        for action_id in ACTION_ID_LIST:    # Select action_id
+            if action_id == "1-1":
+                if state.max_workers["S"][state.current_player_id] < 2 and kind_id == "S":
+                    # ignore put S to seminar
+                    continue
+            if action_id == "5-3":
+                for tid in ["T1", "T2", "T3"]:
+                    action = Action(state.current_player_id, action_id, kind_id=kind_id, trend_id=tid)
+                    action_list.append(action)
+            else:
+                action = Action(state.current_player_id, action_id, kind_id=kind_id)
+                action_list.append(action)
+    
+    # Actions apply 
+    for action in action_list:
+        state_copy = copy.deepcopy(state)
+        state_copy.level = state.level + 1
+        state_copy.parent = state
+        if play(state_copy, action):
+            # success
+            children.append(state_copy)
+
+    # no actions, but workers remain.
+    if not action_list or not children:
+        print("No action_list was occured. Using 1-1 S.")
+        state_copy = copy.deepcopy(state)
+        state_copy.level = state.level + 1
+        state_copy.parent = state
+        action = Action(state.current_player_id, "1-1", "S")
+        if play(state_copy, action):
+            children.append(state_copy)
+       
+    # return children
+    return children
+
 
 
 """

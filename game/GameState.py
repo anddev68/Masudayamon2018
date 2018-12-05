@@ -16,8 +16,11 @@ class GameState:
         self.trend_id = "T0"   # as string T1, T2, T3
         self.start_player_id = 0  # as int
         self.current_player_id = 0
-        self.last_action = None
-        self.assumption = None
+        self.last_action = None # 最後に打たれた手
+        self.level = 0 # 現在の階層(先読みレベル)，AIでしか使わん
+        self.parent = None # 親ノード，AIでしか使わん
+        self.children = [] # 展開後のノード，ここにおくのはメモリ上よくないかも
+        #self.assumption = None
         self.finished = False
         self.season_changed = False
         self.player_changed = True
@@ -73,8 +76,6 @@ class GameState:
         }
         return d
     
-    def __str__(self):
-        return str(self.toDict().items())
 
     def setSeasonId(self, season_id):
         self.season_id = season_id
