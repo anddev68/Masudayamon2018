@@ -12,18 +12,18 @@ class GameState:
         self.myid = myid
     
     def reset(self):
-        self.season_id = "1a"  # as string 1a~6b
-        self.trend_id = "T0"   # as string T1, T2, T3
-        self.start_player_id = 0  # as int
-        self.current_player_id = 0
-        self.last_action = None # 最後に打たれた手
-        self.level = 0 # 現在の階層(先読みレベル)，AIでしか使わん
-        self.parent = None # 親ノード，AIでしか使わん
-        self.children = [] # 展開後のノード，ここにおくのはメモリ上よくないかも
+        self.season_id = "1a"           # as string 1a~6b
+        self.trend_id = "T0"            # as string T1, T2, T3
+        self.start_player_id = 0        # as int
+        self.current_player_id = 0      # 手番プレイヤーのID
+        self.last_action = None         # 最後に打たれた手
+        #self.level = 0                 # 現在の階層(先読みレベル)，AIでしか使わん
+        #self.parent = None # 親ノード，AIでしか使わん
+        self.children = []              # 展開後のノード，ここにおくのはメモリ上よくないかも
         #self.assumption = None
-        self.finished = False
-        self.season_changed = False
-        self.player_changed = True
+        self.finished = False           # ゲームが終了しているかどうか
+#        self.season_changed = False
+#        self.player_changed = True
         self.scores = {
             "T1": [0, 0],
             "T2": [0, 0],
@@ -42,8 +42,8 @@ class GameState:
             "R": [0, 0],
             "D": [0, 0]
         }
-        self.board = {
-            "1-1": [],  # worker array
+        self.board = {  # 盤面
+            "1-1": [],  # Workerクラスのインスタンスが入る
             "2-1": [],
             "2-2": [],
             "2-3": [],
@@ -89,11 +89,11 @@ class GameState:
     def setTrendId(self, trend_id):
         self.trend_id = trend_id
     
-    def postSeasonChanged(self):
-        self.season_changed = True
+#    def postSeasonChanged(self):
+#        self.season_changed = True
 
-    def setPlayerChanged(self, flag):
-        self.player_changed = flag
+#    def setPlayerChanged(self, flag):
+#        self.player_changed = flag
 
     def postFinished(self):
         self.finished = True

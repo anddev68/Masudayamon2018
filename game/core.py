@@ -9,6 +9,19 @@ from game.Action import Action
 from game.Worker import Worker
 import copy
 
+
+ACTION_ID_LIST = [
+    "1-1", 
+    "2-1", "2-2", "2-3",
+    "3-1", "3-2", "3-3",
+    "4-1", "4-2", "4-3",
+    "5-1", "5-2", "5-3",
+    "6-1", "6-2"
+]
+SEASON_ID_LIST = ["1a", "1b", "2a", "2b", "3a", "3b", "4a", "4b", "5a", "5b", "6a", "6b"]
+KIND_ID_LIST = ["P", "A", "S"]
+
+
 def getCurrentTrendId(season_id):
     if season_id in ["1a", "1b", "4a", "4b"]:
         return "T1"
@@ -187,14 +200,44 @@ def doProduction(state):
     state.resetBoard()
 
 """
+次のターンへ進める
+トリガー: playが打たれたとき
+"""
+def nextTurn(state):
+    cpid = action.player_id
+    npid = getEnemyId(action.player_id)
+    # 次のプレイヤーのワーカーが残っていれば次のプレイヤー
+    if hasHoldingWorker(state, npid):
+        state.setCurrentPlayerId(npid)
+    # 残っていなければ同じプレイヤーの番にする
+    elif hasHoldingWorker(state, cpid):
+        return  # nothing to do
+    else:
+        # next season
+        doProduction(state)
+        if state.season_id == "6b":
+            state.postFinished()
+        else:
+            # if need, get award
+            if "b" in state.season_id:
+                doAwarding(state)
+            # if need, pay
+            doPayment(state)
+        state.setCurrentPlayerId(state.start_player_id)
+        state.setSeasonId(getNextSeasonId(state.season_id))
+
+
+
+
+"""
 手を打つ
+手を打つだけなので，この時点では報酬は得られず，コストを支払うのみ．
 @param 現在の状態
 @param 打つ手
 @return True ok
 @return False falied
 """
 def play(state, action):
-
     # individual procedure including checking condition
     if action.action_id == "1-1":
         pass
@@ -263,55 +306,16 @@ def play(state, action):
     state.resources[action.kind_id][action.player_id] -=1   # Decrease holding worker 
     state.board[action.action_id].append(Worker(action.player_id, action.kind_id)) #Put to board
 
-    # Check worker
-    cpid = action.player_id
-    npid = getEnemyId(action.player_id)
-    if hasHoldingWorker(state, npid):
-        # other player plays.
-        state.setCurrentPlayerId(npid)
-        state.setPlayerChanged(True)
-
-    elif hasHoldingWorker(state, cpid):
-        # sampe player plays again.
-        state.setPlayerChanged(False)
-        pass
-        
-    else:
-        # next season
-        doProduction(state)
-        
-        if state.season_id == "6b":
-            state.postFinished()
-        else:
-            # if need, get award
-            if "b" in state.season_id:
-                doAwarding(state)
-            
-            # if need, pay
-            doPayment(state)
-            
-        state.postSeasonChanged()
-        state.setCurrentPlayerId(state.start_player_id)
-
+    # 次のフェーズへ移行
+    nextTurn(state)
     return True
 
 
 
 
-ACTION_ID_LIST = [
-    "1-1", 
-    "2-1", "2-2", "2-3",
-    "3-1", "3-2", "3-3",
-    "4-1", "4-2", "4-3",
-    "5-1", "5-2", "5-3",
-    "6-1", "6-2"
-]
-SEASON_ID_LIST = ["1a", "1b", "2a", "2b", "3a", "3b", "4a", "4b", "5a", "5b", "6a", "6b"]
-KIND_ID_LIST = ["P", "A", "S"]
-
-
 """
 現在の盤面を見て，打てる可能性があるものに関して全て打ち込む
+"""
 """
 def extend(state):
     # stop to execute recursively
@@ -367,27 +371,4 @@ def extend(state):
        
     # return children
     return children
-
-
-
-"""
-def goNextSeason(state):
-
-    # if 6b, finish this game.
-    if "6b" == state.season_id:
-        state.finished = True
-        #print("finished")
-        return
-
-    # Calculate awrard if need
-    # after 1b, 2b, 3b, 4b, 5b, 6b
-    if "b" in state.season_id:
-        #print("awarded")
-        pass
-
-
-
-    # Common procedure
-    state.setSeasonId(getNextSeasonId(state.season_id))
-    state.setCurrentPlayerId(state.start_player_id)
 """
