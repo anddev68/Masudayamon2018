@@ -1,5 +1,7 @@
 # -*- coding:utf-8 -*-
 
+CLIENT_NAME = "Alice"
+
 from classes.GameState import GameState
 from classes.Message import Message
 from ai import alphabeta
@@ -9,36 +11,24 @@ from ai import alphabeta
 @param state: GameState
 @return action: Action どこに何を打つか
 """
-def thinking(state)
-    print(str(solve.state))
-        # 204 DOPLAY -> 205 PLAY
-        # start to think what should I do.
-        # (ex. 205 PLAY 0 S 2-1)
-        score = alphabeta(solve.state, ALPHABETA_DEPTH, float('-inf'), float('inf'))
-        print("\n=============================")
-        print_assumption(solve.state)
-        print("===============================")
-        action = solve.state.assumption.last_action
-        #f = open("log.log", "a")
-        #f.write(str(action)+"\n")
-        #f.close()
-        solve.logger.output(solve.state)
-
-
+def _think(state):
+    print(str(state))
+    score = alphabeta(state, ALPHABETA_DEPTH, float('-inf'), float('inf'))
+    print("\n=============================")
+    #print_assumption(solve.state)
+    print("===============================")
+    action = state.assumption.last_action
 
 
 """
 サーバからのメッセージに対して適切な応答を返す
-多分ここは触る必要ないんじゃないかなと
+自分の番が来たらMULTILINEで情報取得し直しているので，TRENDとかPLAYEDの処理は不要かと
 """
 def solve(message):
     # static values
     solve.pid = vars(solve).setdefault('pid',-1)
     solve.eid = vars(solve).setdefault('eid',-1)
     solve.state = vars(solve).setdefault('state', None)
-    #solve.confprm_once = vars(solve).setdefault('confprm_once', True)
-    #solve.logger = vars(solve).setdefault('logger', Logger())
-
     if message.code == 100:
         # 100 HELLO -> 101 NAME [NAME]
         return Message(101, ['NAME', CLIENT_NAME])
@@ -58,12 +48,18 @@ def solve(message):
         return None
     elif message.code == 202:
         # 202 LINENED -> NULL
+        # 204 DOPLAY -> 205 PLAY
+        # start to think what should I do.
+        # (ex. 205 PLAY 0 S 2-1)
         solve.state.setCurrentPlayerId(solve.state.myid)
-        _think(solve.state)
+        action = _think(solve.state)
         if action.action_id == "5-3":
             return Message(205, ["PLAY", str(solve.pid), action.kind_id, action.action_id, action.trend_id])
         else:
             return Message(205, ["PLAY", str(solve.pid), action.kind_id, action.action_id])
+    elif message.code == 203:
+        # 203 EXIT -> OK
+        return Message(200, ["OK"])
     elif message.code == 204:
         # 204 DOPLAY -> 210 CONFPRM
         return Message(210, ["CONFPRM"])
@@ -72,6 +68,9 @@ def solve(message):
         return None
     elif message.code == 207:
         # 207 NEXT SEASON
+        return None
+    elif message.code == 209:
+        # 209 TREND T[0-3]
         return None
     elif message.code == 211:
         # 211 RESOURCES [01] P[01] A[01] S[0-9]+ M[1-9]*[0-9]+ R[1-9]*[0-9]+ D[0-9]+

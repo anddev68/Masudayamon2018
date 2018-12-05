@@ -1,6 +1,22 @@
 # -*- coding:utf-8 -*-
 
+
+ALPHABETA_DEPTH = 8
+ACTION_ID_LIST = [
+    "1-1", 
+    "2-1", "2-2", "2-3",
+    "3-1", "3-2", "3-3",
+    "4-1", "4-2", "4-3",
+    "5-1", "5-2", "5-3",
+    "6-1", "6-2"
+]
+SEASON_ID_LIST = ["1a", "1b", "2a", "2b", "3a", "3b", "4a", "4b", "5a", "5b", "6a", "6b"]
+KIND_ID_LIST = ["P", "A", "S"]
+
+import queue
 from classes.GameState import GameState
+
+
 
 def eval(state):
     pid = state.myid
