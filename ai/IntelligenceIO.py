@@ -75,6 +75,7 @@ def _alphabeta(state, depth, alpha, beta):
             score = _alphabeta(child, depth-1, alpha, beta)
             if alpha < score: # replace big value and select child node
                 alpha = score
+                state.best_child = child
                 #state.assumption = child
                 #state.setActions(child.getActions())    
             if alpha >= beta:
@@ -88,6 +89,7 @@ def _alphabeta(state, depth, alpha, beta):
             score = _alphabeta(child, depth-1, alpha, beta)
             if score < beta: # replace smaller value and select child node
                 beta = score
+                state.best_child = child
                 #state.assumption = child
                 #state.last_action = child.action
             if alpha >= beta:
@@ -161,13 +163,19 @@ class IntelligenceIO:
         
         print("=========================")
         for child in state.children:
-            print(str(child.last_action), _eval(child))
+            if child is state.best_child:
+                print("★", str(child.last_action), _eval(child))
+            else:
+                print(" ", str(child.last_action), _eval(child))
         print("=========================")
+
+        # 表示用 3sec待つ
+        sleep(3)
 
         print("thinking was finished.")
         print("Warning: Default Action was used.")
         #self.nextAction = Action(self.playerid, "1-1", "S")
-        self.nextAction = state.children[0].last_action
+        self.nextAction = state.best_child.last_action
         pass
     
 

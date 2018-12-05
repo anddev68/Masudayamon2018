@@ -20,6 +20,7 @@ class GameState:
         #self.level = 0                 # 現在の階層(先読みレベル)，AIでしか使わん
         #self.parent = None # 親ノード，AIでしか使わん
         self.children = []              # 展開後のノード，ここにおくのはメモリ上よくないかも
+        self.best_child = None          # AIが選択したノード
         #self.assumption = None
         self.finished = False           # ゲームが終了しているかどうか
 #        self.season_changed = False
