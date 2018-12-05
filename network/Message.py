@@ -12,3 +12,10 @@ class Message:
         self.instructions = instructions
     def __str__(self):
         return str(self.code)+" "+' '.join(self.instructions) + "\n"
+    @staticmethod
+    def createFromRawMessage(raw_message):
+        vector = raw_message.split()
+        code = int(vector[0])
+        instructions = vector[1:]
+        return Message(code, instructions)
+

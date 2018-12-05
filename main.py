@@ -16,15 +16,9 @@ SERVER_PORT = 18420
 #from classes.GameState import GameState
 #from classes.Worker import Worker
 
-from classes.Message import Message
-import solver
+from network.Message import Message
+import network.solver as solver
 
-# raw message to Message class
-def convertToMessage(raw_message):
-    vector = raw_message.split()
-    code = int(vector[0])
-    instructions = vector[1:]
-    return Message(code, instructions)
 
 # argment check
 if len(sys.argv) >= 3:
@@ -47,7 +41,7 @@ while True:
         if not response_str:
             continue
         print("recv:", response_str)
-        response_message = convertToMessage(response_str)
+        response_message = Message.createFromRawMessage(response_str)
         reply_message = solver.solve(response_message)
         if reply_message is not None:
             print("send:" ,str(reply_message))
