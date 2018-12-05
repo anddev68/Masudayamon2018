@@ -25,7 +25,7 @@ def _eval(state):
     #pid = state.myid
     eid = getEnemyId(pid)
     # tid = getCurrentTrendId(state.season_id)
-    return state.resources[state.myid]
+    return state.resources["M"][state.myid]
 
 
 """

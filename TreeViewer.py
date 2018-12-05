@@ -5,7 +5,6 @@ from game.GameState import GameState
 
 class TreeViewer:
     def __init__(self):
-
         pass
     
     def show(self, state):
