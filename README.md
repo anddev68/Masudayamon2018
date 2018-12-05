@@ -1,37 +1,18 @@
 # Instructions for The Laboratory AI, we named Alice.
 
-## ファイル・フォルダ構成
-#### client.py
-メインソースコード．プログラムはここから実行してください．
-
-#### core.py
-ゲームのコアとなるコードをおいてください．ゲームのコアとは，駒を置いたり，季節を進めたりするメソッドです．
-
-#### solver.py
-サーバから送られてくるコマンドに対して適切な応答を返すことをsolverと呼びます．
-ここでは，適切な応答をsolverに書いてあげます．
-
-### classes:クラスモジュール置き場
-ここには各クラスをおいてください．
-
-#### GameState
-ゲームの状態を保持しておくクラスです．
-GameStateにメソッド類持たせても良かったのだけど，簡単化のためC言語ライクに構造体として扱います．
-
-#### Action
-#### Message
-#### Worker
-
-### ai: ゲームAIのモジュール置き場
-
-
-## 命名規則
-特に考えてませんが，privateなメソッドには_をつけるようにしてください．
-
 ## 実行方法
-
-下記コマンドを実行する．IPとPORTは任意
+下記コマンドを実行する．IPとPORTは任意パラメータ
 
 ```
 $ python3 main.py [IP] [PORT]
 ```
+
+## フォルダ構成
+気にするところはここだけ．
+### game.GameBoard
+現在のゲーム状態．
+### game.Action
+手のこと．(1-1, S)みたいなやつ．
+### ai.IntelligenceIO
+- startThinking(state): ゲームの状態が渡されるので，ここで考える
+- getNextAction(): 次のActionを返してあげる．
