@@ -28,6 +28,7 @@ class GameState:
         self.best_child = None          # AIが選択したノード
         #self.assumption = None
         self.finished = False           # ゲームが終了しているかどうか
+        self.score = 0                  # AIで使うスコア
 #        self.season_changed = False
 #        self.player_changed = True
         self.scores = {

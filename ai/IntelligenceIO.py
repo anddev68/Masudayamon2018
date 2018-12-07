@@ -20,16 +20,15 @@ import copy
 
 #from gui.TreeViewer import TreeViewer
 
-ALPHABETA_DEPTH = 4
+ALPHABETA_DEPTH = 5
 
-# 5-3は無視
+# 4-3, 5-3, 6-1, 6-2は無視
 ACTION_ID_LIST = [
     "1-1", 
     "2-1", "2-2", "2-3",
     "3-1", "3-2", "3-3",
-    "4-1", "4-2", "4-3",
-    "5-1", "5-2",
-    "6-1", "6-2"
+    "4-1", "4-2",
+    "5-1", "5-2"
 ]
 SEASON_ID_LIST = ["1a", "1b", "2a", "2b", "3a", "3b", "4a", "4b", "5a", "5b", "6a", "6b"]
 KIND_ID_LIST = ["P", "A", "S"]
@@ -41,29 +40,34 @@ KIND_ID_LIST = ["P", "A", "S"]
 def _eval(state):
     # 終わってたら読み切る
     if(state.finished):
-        return getTotalScore(state, state.myid) - getTotalScore(state, state.myid)
+        return getTotalScore(state, state.myid) - getTotalScore(state, state.eid)
+    
+    score = 0
 
-    tid = getCurrentTrendId(state.season_id)
-    score = state.resources["M"][state.myid]
-    score += state.resources["R"][state.myid]
+    # MとRを単純に増やすだけだとあまり意味がない？
+    # 自分のリソースはプラス
+    score += state.resources["M"][state.myid]
+    score += state.resources["R"][state.myid] * 2
+    # 相手のリソースはマイナス
+    score -= state.resources["M"][state.eid]
+    score -= state.resources["R"][state.eid] * 2
     
-    #if state.resources["M"][state.myid] < 2:
-    # score -= 100 #2より減らしたらダメ
+    # お金2より減らしたらダメ
+    if state.resources["M"][state.myid] < 2:
+        score -= 100
     
-    score += getTotalScore(state, state.myid) * 1.6
+    # 各シーズン，相手よりもスコアが高いこと
+    if state.scores["T1"][state.myid] + state.deposit_scores["T1"][state.myid] <= state.scores["T1"][state.eid] + state.deposit_scores["T1"][state.eid]:
+        score -= 100
+    if state.scores["T2"][state.myid] + state.deposit_scores["T2"][state.myid] <= state.scores["T2"][state.eid] + state.deposit_scores["T2"][state.eid]:
+        score -= 100
+    if state.scores["T3"][state.myid] + state.deposit_scores["T3"][state.myid] <= state.scores["T3"][state.eid] + state.deposit_scores["T3"][state.eid]:
+        score -= 100
+
+    score += getTotalScore(state, state.myid)
 
     return score
 
-
-"""
-ゲーム木出力メソッド
-"""
-def _print_assumption(state, depth=1):
-    if state.assumption is None:
-        return
-    print(depth, str(state.assumption.last_action), eval(state))
-    #print(str(state.assumption))
-    print_assumption(state.assumption, depth+1)
 
 """
 アルファベータほう
@@ -88,6 +92,7 @@ def _alphabeta(state, depth, alpha, beta):
             if alpha < score: # replace big value and select child node
                 alpha = score
                 state.best_child = child
+                child.score = alpha
                 #state.assumption = child
                 #state.setActions(child.getActions())    
             if alpha >= beta:
@@ -102,6 +107,7 @@ def _alphabeta(state, depth, alpha, beta):
             if score < beta: # replace smaller value and select child node
                 beta = score
                 state.best_child = child
+                child.score = beta
                 #state.assumption = child
                 #state.last_action = child.action
             if alpha >= beta:
@@ -176,16 +182,19 @@ class IntelligenceIO:
         print("=========================")
         for child in state.children:
             if child is state.best_child:
-                print("★", str(child.last_action), _eval(child))
+                #print("★", str(child.last_action), _eval(child))
+                print("★", str(child.last_action), child.score)
             else:
-                print(" ", str(child.last_action), _eval(child))
+                #print(" ", str(child.last_action), _eval(child))
+                print(" ", str(child.last_action), child.score)
         print("=========================")
 
         # 表示用 3sec待つ
         #sleep(3)
-
         print("thinking was finished.")
-        print("Warning: Default Action was used.")
+
+        z = input()
+
         #self.nextAction = Action(self.playerid, "1-1", "S")
         self.nextAction = state.best_child.last_action
         pass
