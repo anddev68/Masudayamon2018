@@ -8,8 +8,13 @@
 class GameState:
 
     def __init__(self, myid):
-        self.reset()
         self.myid = myid
+        if myid == 0:
+            self.eid = 1
+        else:
+            self.eid = 0
+        self.reset()
+        self.resetDeposit()
     
     def reset(self):
         self.season_id = "1a"           # as string 1a~6b
@@ -64,6 +69,20 @@ class GameState:
     def resetBoard(self):
         for key in self.board.keys():
             self.board[key] = []
+
+    def resetDeposit(self):
+        self.deposit_resources = {      # このシーズン終了後に変動予定のリソース数
+            "P": [0, 0],
+            "A": [0, 0],
+            "S": [0, 0],
+            "M": [0, 0], 
+            "R": [0, 0],
+        }
+        self.deposit_scores = {       # このシーズン終了時に獲得予定のスコア
+            "T1": [0, 0],
+            "T2": [0, 0],
+            "T3": [0, 0]
+        }
 
     def toDict(self):
         d = {

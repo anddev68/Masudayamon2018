@@ -99,10 +99,15 @@ def doPayment(state):
 
 """
 動作：生産フェイズの実行
-詳細：置いてあるワーカに基づいて業績付与および，ワーカの回収
+テンポラリーに保存しておいた分を処理します
 トリガー：
 """
 def doProduction(state):
+    # スコアの計算
+    #state.scores += state.deposit_scores
+    #state.resources += state.deposit_resources 
+    state.resetDeposit()
+    
     # Calculate r_seminar point
     p = 0
     a = 0
@@ -217,6 +222,7 @@ def nextTurn(state, action):
         doProduction(state)
         if state.season_id == "6b":
             state.postFinished()
+            return
         else:
             # if need, get award
             if "b" in state.season_id:
@@ -227,11 +233,30 @@ def nextTurn(state, action):
         state.setSeasonId(getNextSeasonId(state.season_id))
 
 
+TABLE3_1 = {
+    "P": 1, "A": 1, "S": 2
+}
+TABLE3_2 = {
+    "P": 3, "A": 4, "S": 4
+}
+TABLE3_3 = {
+    "P": 7, "A": 6, "S": 5
+}
+TABLE4_1 = {
+    "P": 8, "A": 7, "S": 6
+}
+TABLE4_2 = {
+    "P": 7, "A": 6, "S": 5
+}
+TABLE4_3 = {
+    "P": 6, "A": 5, "S": 4
+}
 
 
 """
 手を打つ
 手を打つだけなので，この時点では報酬は得られず，コストを支払うのみ．
+獲得予定のスコアだけdepositに加算
 @param 現在の状態
 @param 打つ手
 @return True ok
@@ -254,31 +279,37 @@ def play(state, action):
         if state.board[action.action_id] or state.resources["R"][action.player_id] < 2:
             return False
         state.resources["R"][action.player_id] -= 2
+        state.deposit_scores[getCurrentTrendId(state.season_id)][action.player_id] += TABLE3_1[action.kind_id]
     elif action.action_id == "3-2": # Presentation R-4 M-1
         if state.board[action.action_id] or state.resources["R"][action.player_id] < 4 or state.resources["M"][action.player_id] < 1:
             return False
         state.resources["M"][action.player_id] -= 1
         state.resources["R"][action.player_id] -= 4
+        state.deposit_scores[getCurrentTrendId(state.season_id)][action.player_id] += TABLE3_2[action.kind_id]
     elif action.action_id == "3-3": # Presantation R-8 M-1
         if state.board[action.action_id] or state.resources["R"][action.player_id] < 8 or state.resources["M"][action.player_id] < 1:
             return False
         state.resources["M"][action.player_id] -= 1
         state.resources["R"][action.player_id] -= 8
+        state.deposit_scores[getCurrentTrendId(state.season_id)][action.player_id] += TABLE3_3[action.kind_id]
     elif action.action_id == "4-1": # R-8 M-1
         if state.board[action.action_id] or state.resources["R"][action.player_id] < 8 or state.resources["M"][action.player_id] < 1:
             return False
         state.resources["M"][action.player_id] -= 1
         state.resources["R"][action.player_id] -= 8
+        state.deposit_scores[getCurrentTrendId(state.season_id)][action.player_id] += TABLE4_1[action.kind_id]
     elif action.action_id == "4-2":
         if state.board[action.action_id] or not state.board["4-1"] or state.resources["R"][action.player_id] < 8 or state.resources["M"][action.player_id] < 1: # full itself or 2-1 is empty, then failed
             return False
         state.resources["M"][action.player_id] -= 1
         state.resources["R"][action.player_id] -= 8
+        state.deposit_scores[getCurrentTrendId(state.season_id)][action.player_id] += TABLE4_2[action.kind_id]
     elif action.action_id == "4-3":
         if state.board[action.action_id] or not state.board["4-2"] or state.resources["R"][action.player_id] < 8 or state.resources["M"][action.player_id] < 1: # full itself or 2-1 is empty, then failed
             return False
         state.resources["M"][action.player_id] -= 1
         state.resources["R"][action.player_id] -= 8
+        state.deposit_scores[getCurrentTrendId(state.season_id)][action.player_id] += TABLE4_3[action.kind_id]
     elif action.action_id == "5-1": # nocost
         if state.board[action.action_id] or action.kind_id == "S":
             return False

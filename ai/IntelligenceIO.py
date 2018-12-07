@@ -12,13 +12,15 @@ getNextActionで次の手を出力する．
 from game.GameState import GameState
 from game.Action import Action
 from game.core import play
+from game.core import getCurrentTrendId
+from game.core import getTotalScore
 import queue
 import copy
 
 
 #from gui.TreeViewer import TreeViewer
 
-ALPHABETA_DEPTH = 2
+ALPHABETA_DEPTH = 4
 
 # 5-3は無視
 ACTION_ID_LIST = [
@@ -37,10 +39,20 @@ KIND_ID_LIST = ["P", "A", "S"]
 盤面評価関数
 """
 def _eval(state):
-    #pid = state.myid
-    #eid = getEnemyId(pid)
-    # tid = getCurrentTrendId(state.season_id)
-    return state.resources["M"][state.myid]
+    # 終わってたら読み切る
+    if(state.finished):
+        return getTotalScore(state, state.myid) - getTotalScore(state, state.myid)
+
+    tid = getCurrentTrendId(state.season_id)
+    score = state.resources["M"][state.myid]
+    score += state.resources["R"][state.myid]
+    
+    #if state.resources["M"][state.myid] < 2:
+    # score -= 100 #2より減らしたらダメ
+    
+    score += getTotalScore(state, state.myid) * 1.6
+
+    return score
 
 
 """
@@ -170,7 +182,7 @@ class IntelligenceIO:
         print("=========================")
 
         # 表示用 3sec待つ
-        sleep(3)
+        #sleep(3)
 
         print("thinking was finished.")
         print("Warning: Default Action was used.")
