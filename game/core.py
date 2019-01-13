@@ -46,7 +46,7 @@ def getNextSeasonId(season_id):
         return season_id[0]+ 'b'
 
 def getTotalScore(state, pid):
-    return state.scores["T1"][pid] + state.scores["T2"][pid] + state.scores["T3"][pid] 
+    return state.scores["T1"][pid] + state.scores["T2"][pid] + state.scores["T3"][pid] - state.resources["D"][pid]
 
 def countPeople(state, pid):
     return state.resources["P"][pid] + state.resources["A"][pid] +state.resources["S"][pid] 
@@ -94,7 +94,7 @@ def doPayment(state):
         fee += state.resources["S"][pid]
         state.resources["M"][pid] -= fee
         if state.resources["M"][pid] < 0:
-            state.resources["D"][pid] -= state.resources["M"][pid] 
+            state.resources["D"][pid] -= (state.resources["M"][pid] * 3) 
             state.resources["M"][pid] = 0
 
 """
