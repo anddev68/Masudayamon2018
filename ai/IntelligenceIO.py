@@ -14,43 +14,46 @@ from game.Action import Action
 from game.core import play
 from game.core import getCurrentTrendId
 from game.core import getTotalScore
+from game.core import countPeople
 import queue
 import copy
-import random
 
 
 #from gui.TreeViewer import TreeViewer
 
 ALPHABETA_DEPTH = 6
-MONTECARLO_PLAYOUT = 1000
-
-
 
 # 4-3, 5-3, 6-1, 6-2は無視
-ACTION_ID_LIST_0 = [
+ACTION_ID_LIST_N = [
     "1-1",
     "2-1", "2-2", "2-3",
     "3-1", "3-2", "3-3",
     "4-1", "4-2",
+           "5-2"
+]
+ACTION_ID_LIST_R = [
+    "1-1",
+    "2-1","2-2","2-3",
+
+
     "5-2"
 ]
-ACTION_ID_LIST_1 = [
+ACTION_ID_LIST_PS = [
     "1-1",
-    "2-1", "2-2", "2-3",
-    "3-1", "3-2", "3-3",
-    "4-1", "4-2",
-    "5-2"
+
+    "3-1","3-2"
+
+
 ]
-ACTION_ID_LIST_RESOURCES = [
+ACTION_ID_LIST_PP = [
     "1-1",
-    "2-1", "2-2", "2-3",
-    "5-2"
+
+                "3-3",
+    "4-1","4-2","4-3"
+
 ]
-ACTION_ID_LIST_POINT = [
-    "1-1",
-    "3-1", "3-2", "3-3",
-    "4-1", "4-2",
-]
+
+
 SEASON_ID_LIST = ["1a", "1b", "2a", "2b", "3a", "3b", "4a", "4b", "5a", "5b", "6a", "6b"]
 KIND_ID_LIST = ["P", "A", "S"]
 
@@ -60,11 +63,10 @@ KIND_ID_LIST = ["P", "A", "S"]
 """
 def _eval(state):
     # 終わってたら読み切る
-    score = 0
-
     if(state.finished):
         return getTotalScore(state, state.myid) - getTotalScore(state, state.eid)
 
+    score = 0
 
     # MとRを単純に増やすだけだとあまり意味がない？
     # 自分のリソースはプラス
@@ -74,10 +76,11 @@ def _eval(state):
     score -= state.resources["M"][state.eid]
     score -= state.resources["R"][state.eid] * 2
 
-    if state.resources["D"][state.myid] > 0 :
-        score -= 100
     # お金2より減らしたらダメ
     if state.resources["M"][state.myid] < 2:
+        score -= 100
+
+    if state.resources["D"][state.myid] > 0 :
         score -= 100
 
     # 各シーズン，相手よりもスコアが高いこと
@@ -105,7 +108,6 @@ def _alphabeta(state, depth, alpha, beta):
         return _eval(state)
     # Extend children nodes
     children = _extend(state)
-
     state.children = children
     # There are no children.
     if not children:
@@ -142,105 +144,50 @@ def _alphabeta(state, depth, alpha, beta):
                 break #alpha cut
         return beta
 
-def montecarlo(state):
-    children = _extend(state)
-    state.children = children
-    w=[]
-    if len(children)>1:
-        for i,child in enumerate(children):
-            w.append(0)
-            for j in range(MONTECARLO_PLAYOUT):
-                result=monuchi(child,state.season_id)
-                if getTotalScore(result,state.myid)>getTotalScore(result,state.eid):
-                    w[i]+=1
-                print(j)
-        print(w)
-    else:
-        w.append(0)
-    state.best_child=children[w.index(max(w))]
-
-def monuchi(state,season):
-
-
-    if state.finished:
-        return state
-    else:
-        children=_extend(state)
-        child_num=random.randint(0,len(children)-1)
-        return monuchi(children[child_num],season)
-
-
 
 """
 盤面展開メソッド
 """
 def _extend(state):
 
+    ACTION_ID_LIST = ACTION_ID_LIST_N
+    KIND_ID_LIST = ["P", "A", "S"]
 
-    if state.start_player_id == state.current_player_id:
-        ACTION_ID_LIST = ACTION_ID_LIST_0
-    else:
-        ACTION_ID_LIST = ACTION_ID_LIST_1
-
-    if state.myid == 0 and state.start_player_id == 0:#and state.flag == 0:
-        if state.season_id == "4b":
-            if state.scores["T1"][0] > state.scores["T1"][1]:
-                pass
-                """
-                for kind_id in KIND_ID_LIST:
-                    if state.resources[kind_id][state.current_player_id] <= 0: # No worker
-                        continue
-                    elif kind_id == "P" or kind_id == "A":
-                        ACTION_ID_LIST = ["4-1","4-2","3-3","4-3","3-2","3-1","1-1"]
-                    else:
-                        ACTION_ID_LIST = ["3-2","3-1","4-1","4-2","3-3","4-3","1-1"]
-                    for action_id in ACTION_ID_LIST:
-                        action = Action(state.current_player_id,action_id, kind_id=kind_id)
-                        state_copy = copy.deepcopy(state)
-                        if play(state_copy, action):
-                            return [state_copy]
-                """
+    if state.myid == 0 and state.start_player_id == 0:
+        if state.season_id not in ["1b","4b","6a","6b"]:
+            ACTION_ID_LIST = ACTION_ID_LIST_R
+            #if state.resources['P'][state.current_player_id] > 0:
+                #KIND_ID_LIST = ['P']
 
 
-        elif getCurrentTrendId(state.season_id) == "T2" or state.season_id == "3a" or state.season_id == "3b" or state.season_id == "4a":
-            ACTION_ID_LIST = ACTION_ID_LIST_RESOURCES
+    if state.myid == 1:
+        if 'a' in state.season_id and state.season_id != "6a":
+            ACTION_ID_LIST = ACTION_ID_LIST_R
+            if state.resources['P'][state.current_player_id] > 0:
+                KIND_ID_LIST = ['P']
 
-        elif state.season_id == "6a":
-            action = Action(state.current_player_id,"5-1", kind_id="P")
+    if state.season_id in ["6a","6b"]:
+        ACTION_ID_LIST = ["4-1","4-2","3-3","4-3","3-2","3-1","1-1"]
+
+    if state.season_id == "6b" and countPeople(state,state.current_player_id) == 1:
+
+        if state.resources['P'][state.current_player_id] > 0:
+            ACTION_ID_LIST = ["4-1","4-2","3-3","4-3","3-2","3-1","1-1"]
+            kind_id = "P"
+        elif state.resources['S'][state.current_player_id] > 0:
+            ACTION_ID_LIST = ["4-1","4-2","3-3","3-2","4-3","3-1","1-1"]
+            kind_id = "S"
+
+        for action_id in ACTION_ID_LIST:
+            action = Action(state.current_player_id,action_id, kind_id=kind_id)
             state_copy = copy.deepcopy(state)
             if play(state_copy, action):
                 return [state_copy]
 
-        if state.season_id == "6b":
-            for kind_id in KIND_ID_LIST:
-                if state.resources[kind_id][state.current_player_id] <= 0: # No worker
-                    continue
-                else:
-                    ACTION_ID_LIST = ["4-1","4-2","3-3","4-3","3-2","3-1"]
 
-                for action_id in ACTION_ID_LIST:
-                    action = Action(state.myid,action_id, kind_id=kind_id)
-                    state_copy = copy.deepcopy(state)
-                    if play(state_copy, action):
-                        return [state_copy]
-
-    else:
-        if state.season_id == "6b" and state.current_player_id==state.myid:
-            if state.resources["S"][state.myid] ==1 and state.resources["P"][state.myid] ==0:
-                ACTION_ID_LIST = ["4-1","4-2","3-3","4-3","3-2","3-1"]
-                for action_id in ACTION_ID_LIST:
-                    action = Action(state.myid,action_id, kind_id="S")
-                    state_copy = copy.deepcopy(state)
-                    if play(state_copy, action):
-                        return [state_copy]
-
-
-        if state.season_id == "6a" or state.season_id == "6b":
-            ACTION_ID_LIST = ACTION_ID_LIST_POINT
-
-    #print(ACTION_ID_LIST)
     children = []
     action_list = []
+
     # アクションリスト生成
     for kind_id in KIND_ID_LIST:         # Select kind_id
         if state.resources[kind_id][state.current_player_id] <= 0: # No worker
@@ -248,33 +195,18 @@ def _extend(state):
         for action_id in ACTION_ID_LIST:    # Select action_id
             action = Action(state.current_player_id, action_id, kind_id=kind_id)
             action_list.append(action)
+
     # アクションを適用した盤面を作る
     for action in action_list:
         state_copy = copy.deepcopy(state)
         if play(state_copy, action):
             # success
             children.append(state_copy)
-    if len(children) == 1:
-        ACTION_ID_LIST = ACTION_ID_LIST_0
-        #print(ACTION_ID_LIST)
-        children = []
-        action_list = []
-        # アクションリスト生成
-        for kind_id in KIND_ID_LIST:         # Select kind_id
-            if state.resources[kind_id][state.current_player_id] <= 0: # No worker
-                continue
-            for action_id in ACTION_ID_LIST:    # Select action_id
-                action = Action(state.current_player_id, action_id, kind_id=kind_id)
-                action_list.append(action)
-        # アクションを適用した盤面を作る
-        for action in action_list:
-            state_copy = copy.deepcopy(state)
-            if play(state_copy, action):
-                # success
-                children.append(state_copy)
+
     if state.myid == 0:
         if len(children) > 1:
             children = [child for child in children if not(child.last_action.action_id == "1-1" and child.last_action.kind_id == "S")]
+
     return children
 
 
@@ -297,7 +229,7 @@ class IntelligenceIO:
         print("start thinking.")
         self.playerid = state.current_player_id
         _alphabeta(state, ALPHABETA_DEPTH, float('-inf'), float('inf'))
-        #montecarlo(state)
+
         print("=========================")
         for child in state.children:
             if child is state.best_child:
@@ -311,8 +243,6 @@ class IntelligenceIO:
         # 表示用 3sec待つ
         #sleep(3)
         print("thinking was finished.")
-
-        #z = input()
 
         #self.nextAction = Action(self.playerid, "1-1", "S")
         self.nextAction = state.best_child.last_action
