@@ -168,7 +168,7 @@ def _extend(state):
     if state.season_id in ["6a","6b"]:
         ACTION_ID_LIST = ["4-1","4-2","3-3","4-3","3-2","3-1","1-1"]
 
-    if state.season_id == "6b" and countPeople(state,state.current_player_id) == 1:
+    if state.season_id == "6b" and countPeople(state,state.current_player_id) == 0:
 
         if state.resources['P'][state.current_player_id] > 0:
             ACTION_ID_LIST = ["4-1","4-2","3-3","4-3","3-2","3-1","1-1"]
