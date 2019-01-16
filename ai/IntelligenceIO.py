@@ -77,11 +77,10 @@ def _eval(state):
     score -= state.resources["R"][state.eid] * 2
 
     # お金2より減らしたらダメ
-    if state.resources["M"][state.myid] < 2:
+    if state.resources["M"][state.myid] < 2 :
         score -= 100
 
-    if state.resources["D"][state.myid] > 0 :
-        score -= 100
+    score -= state.resources["D"][state.myid] * 1000
 
     # 各シーズン，相手よりもスコアが高いこと
     if state.scores["T1"][state.myid] + state.deposit_scores["T1"][state.myid] <= state.scores["T1"][state.eid] + state.deposit_scores["T1"][state.eid]:
@@ -119,7 +118,7 @@ def _alphabeta(state, depth, alpha, beta):
             if depth == ALPHABETA_DEPTH:
                 print("Progress", i+1, len(children))
             score = _alphabeta(child, depth-1, alpha, beta)
-            if alpha < score: # replace big value and select child node
+            if alpha < score : # replace big value and select child node
                 alpha = score
                 state.best_child = child
                 child.score = alpha
@@ -153,14 +152,14 @@ def _extend(state):
     ACTION_ID_LIST = ACTION_ID_LIST_N
     KIND_ID_LIST = ["P", "A", "S"]
 
-    if state.myid == 0 and state.start_player_id == 0:
+    if state.myid == 0 and state.start_player_id == 0 and state.current_player_id == 0:
         if state.season_id not in ["1b","4b","6a","6b"]:
             ACTION_ID_LIST = ACTION_ID_LIST_R
             #if state.resources['P'][state.current_player_id] > 0:
                 #KIND_ID_LIST = ['P']
 
 
-    if state.myid == 1:
+    if state.myid == 1 and state.current_player_id == 0:
         if 'a' in state.season_id and state.season_id != "6a":
             ACTION_ID_LIST = ACTION_ID_LIST_R
             if state.resources['P'][state.current_player_id] > 0:
