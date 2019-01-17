@@ -159,7 +159,7 @@ def _extend(state):
                 #KIND_ID_LIST = ['P']
 
 
-    if state.myid == 1 and state.current_player_id == 0:
+    if state.myid == 1 and state.current_player_id == 1:
         if 'a' in state.season_id and state.season_id != "6a":
             ACTION_ID_LIST = ACTION_ID_LIST_R
             if state.resources['P'][state.current_player_id] > 0:
