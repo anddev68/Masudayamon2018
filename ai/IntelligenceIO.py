@@ -143,7 +143,6 @@ def _alphabeta(state, depth, alpha, beta):
                 break #alpha cut
         return beta
 
-
 """
 盤面展開メソッド
 """
