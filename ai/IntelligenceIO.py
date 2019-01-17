@@ -166,7 +166,8 @@ def _extend(state):
                 KIND_ID_LIST = ['P']
 
     if state.season_id in ["6a","6b"]:
-        ACTION_ID_LIST = ["4-1","4-2","3-3","4-3","3-2","3-1","1-1"]
+        #ACTION_ID_LIST = ["4-1","4-2","3-3","4-3","3-2","3-1","1-1"]
+        ACTION_ID_LIST = ACTION_ID_LIST_N
 
     if state.season_id == "6b" and countPeople(state,state.current_player_id) == 1:
 
