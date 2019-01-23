@@ -21,22 +21,31 @@ import copy
 
 #from gui.TreeViewer import TreeViewer
 
-ALPHABETA_DEPTH = 6
-
 # 4-3, 5-3, 6-1, 6-2は無視
 ACTION_ID_LIST_N = [
-    "1-1",
+    "1-1", "5-2",
     "2-1", "2-2", "2-3",
-    "3-1", "3-2", "3-3",
-    "4-1", "4-2",
-           "5-2"
+    "4-1", "3-2", "4-2",
+    "3-1", "3-3",
+]
+ACTION_ID_LIST_NP = [
+    "1-1", "5-2",
+    "4-1", "4-2", "3-3",
+    "2-1", "2-2", "2-3",
+    "3-1", "3-2",
+]
+ACTION_ID_LIST_NS = [
+    "2-1", "2-2", "3-2",
+    "3-1", "2-3", "4-1",
+    "4-2", "3-3", "5-2",
+    "1-1"
 ]
 ACTION_ID_LIST_R = [
     "1-1",
     "2-1","2-2","2-3",
 
 
-    "5-2"
+          "5-2"
 ]
 ACTION_ID_LIST_PS = [
     "1-1",
@@ -56,6 +65,7 @@ ACTION_ID_LIST_PP = [
 
 SEASON_ID_LIST = ["1a", "1b", "2a", "2b", "3a", "3b", "4a", "4b", "5a", "5b", "6a", "6b"]
 KIND_ID_LIST = ["P", "A", "S"]
+kind_list = ["P", "A", "S"]
 
 
 """
@@ -90,7 +100,7 @@ def _eval(state):
     if state.scores["T3"][state.myid] + state.deposit_scores["T3"][state.myid] <= state.scores["T3"][state.eid] + state.deposit_scores["T3"][state.eid]:
         score -= 100
 
-    if state.myid == 0:
+    if state.myid == 0 and state.start_player_id == 1:
         score += getTotalScore(state, state.myid) * 3
     else:
         score += getTotalScore(state, state.myid)
@@ -101,7 +111,7 @@ def _eval(state):
 """
 アルファベータほう
 """
-def _alphabeta(state, depth, alpha, beta):
+def _alphabeta(state, depth,ALPHABETA_DEPTH,alpha, beta):
     # use depth limit
     if depth==0:
         return _eval(state)
@@ -109,6 +119,11 @@ def _alphabeta(state, depth, alpha, beta):
     children = _extend(state)
     state.children = children
     # There are no children.
+
+    if depth==ALPHABETA_DEPTH and len(children)==1:
+        state.best_child = children[0]
+        return 0
+
     if not children:
         #print("Cannot extend")
         return _eval(state)
@@ -117,7 +132,7 @@ def _alphabeta(state, depth, alpha, beta):
         for i, child in enumerate(children):
             if depth == ALPHABETA_DEPTH:
                 print("Progress", i+1, len(children))
-            score = _alphabeta(child, depth-1, alpha, beta)
+            score = _alphabeta(child, depth-1,ALPHABETA_DEPTH, alpha, beta)
             if alpha < score : # replace big value and select child node
                 alpha = score
                 state.best_child = child
@@ -132,7 +147,7 @@ def _alphabeta(state, depth, alpha, beta):
         for i, child in enumerate(children):
             if depth == ALPHABETA_DEPTH:
                 print("Progress", i+1, len(children))
-            score = _alphabeta(child, depth-1, alpha, beta)
+            score = _alphabeta(child, depth-1,ALPHABETA_DEPTH, alpha, beta)
             if score < beta: # replace smaller value and select child node
                 beta = score
                 state.best_child = child
@@ -143,30 +158,30 @@ def _alphabeta(state, depth, alpha, beta):
                 break #alpha cut
         return beta
 
-
 """
 盤面展開メソッド
 """
 def _extend(state):
 
     ACTION_ID_LIST = ACTION_ID_LIST_N
-    KIND_ID_LIST = ["P", "A", "S"]
+    #KIND_ID_LIST = [kind for kind in kind_list if state.resources[kind][state.current_player_id] > 0]
 
     if state.myid == 0 and state.start_player_id == 0 and state.current_player_id == 0:
-        if state.season_id not in ["1b","4b","6a","6b"]:
+        if state.season_id not in ["1b","4b","5b","6a","6b"]:
             ACTION_ID_LIST = ACTION_ID_LIST_R
             #if state.resources['P'][state.current_player_id] > 0:
                 #KIND_ID_LIST = ['P']
 
 
-    if state.myid == 1 and state.current_player_id == 1:
-        if 'a' in state.season_id and state.season_id != "6a":
-            ACTION_ID_LIST = ACTION_ID_LIST_R
-            if state.resources['P'][state.current_player_id] > 0:
-                KIND_ID_LIST = ['P']
+    #if state.myid == 1 and state.current_player_id == 1:
+        #if 'a' in state.season_id and state.season_id != "6a":
+            #ACTION_ID_LIST = ACTION_ID_LIST_R
+            #if state.resources['P'][state.current_player_id] > 0:
+                #KIND_ID_LIST = ['P']
 
-    if state.season_id in ["6a","6b"]:
+    if state.season_id in ["6b"]:
         ACTION_ID_LIST = ["4-1","4-2","3-3","4-3","3-2","3-1","1-1"]
+        #ACTION_ID_LIST = ACTION_ID_LIST_N
 
     if state.season_id == "6b" and countPeople(state,state.current_player_id) == 0:
 
@@ -176,6 +191,9 @@ def _extend(state):
         elif state.resources['S'][state.current_player_id] > 0:
             ACTION_ID_LIST = ["4-1","4-2","3-3","3-2","4-3","3-1","1-1"]
             kind_id = "S"
+        elif state.resources['A'][state.current_player_id] > 0:
+            ACTION_ID_LIST = ["4-1","4-2","3-3","4-3","3-2","3-1","1-1"]
+            kind_id = "A"
 
         for action_id in ACTION_ID_LIST:
             action = Action(state.current_player_id,action_id, kind_id=kind_id)
@@ -201,10 +219,21 @@ def _extend(state):
         if play(state_copy, action):
             # success
             children.append(state_copy)
+    """
 
-    if state.myid == 0:
-        if len(children) > 1:
-            children = [child for child in children if not(child.last_action.action_id == "1-1" and child.last_action.kind_id == "S")]
+    for action_id in ACTION_ID_LIST:
+        for kind_id in KIND_ID_LIST:
+            action = Action(state.current_player_id, action_id, kind_id=kind_id)
+            state_copy = copy.deepcopy(state)
+            if play(state_copy, action):
+                # success
+                children.append(state_copy)
+    """
+
+
+    #if state.myid == 0:
+    if len(children) > 1:
+        children = [child for child in children if not((child.last_action.action_id == '1-1' and child.last_action.kind_id == "S") or (child.last_action.action_id in ["3-3","4-1","4-2"] and child.last_action.kind_id == "S" and child.season_id != "6a"and child.season_id != "6b"))]
 
     return children
 
@@ -224,10 +253,25 @@ class IntelligenceIO:
     """
     thinkingでstateがもらえるので，状態を判断する
     """
-    def startThinking(self, state):
+    def startThinking(self, state,mode):
         print("start thinking.")
         self.playerid = state.current_player_id
-        _alphabeta(state, ALPHABETA_DEPTH, float('-inf'), float('inf'))
+        ALPHABETA_DEPTH = 6
+
+        if mode == 1:
+            ALPHABETA_DEPTH = 6
+        elif mode == 2:
+            if 'b' in state.season_id:
+                ALPHABETA_DEPTH = 6
+            else:
+                ALPHABETA_DEPTH = 8
+        else:
+            if state.myid == 0:
+                ALPHABETA_DEPTH = 8
+            else:
+                ALPHABETA_DEPTH = 8
+        print(ALPHABETA_DEPTH)
+        _alphabeta(state, ALPHABETA_DEPTH,ALPHABETA_DEPTH,float('-inf'), float('inf'))
 
         print("=========================")
         for child in state.children:

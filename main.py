@@ -21,18 +21,24 @@ import network.solver as solver
 
 
 # argment check
-if len(sys.argv) >= 3:
-    ip = sys.argv[2]
+if len(sys.argv) >= 2:
+    ip = sys.argv[1]
 else:
     ip = SERVER_IP
-if len(sys.argv) >= 4:
-    port = sys.argv[3]
+if len(sys.argv) >= 3:
+    port = int(sys.argv[2])
 else:
     port = SERVER_PORT
+if len(sys.argv) >= 4:
+    mode = int(sys.argv[3])
+else:
+    mode = 0
+print(ip,port)
 
+flag = 0
 # Connect to server
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client.connect((ip, port)) 
+client.connect((ip, port))
 # main loop
 while True:
     response_strings = client.recv(4096)
@@ -41,21 +47,9 @@ while True:
         if not response_str:
             continue
         print("recv:", response_str)
+
         response_message = Message.createFromRawMessage(response_str)
-        reply_message = solver.solve(response_message)
+        reply_message = solver.solve(response_message,mode)
         if reply_message is not None:
             print("send:" ,str(reply_message))
             client.send(str(reply_message).encode())
-
-
-
-
-
-
-
-
-
-
-
-
-

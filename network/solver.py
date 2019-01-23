@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
 
-CLIENT_NAME = "Alice"
+CLIENT_NAME = "Å☆LiÇE"
 ALPHABETA_DEPTH = 8
 
 from game.GameState import GameState
@@ -16,8 +16,8 @@ ai = aiIO.create()
 @param state: GameState
 @return action: Action どこに何を打つか
 """
-def _think(state):
-    ai.startThinking(state)
+def _think(state,mode):
+    ai.startThinking(state,mode)
     action = ai.getNextAction()
     return action
 
@@ -26,7 +26,7 @@ def _think(state):
 自分の番が来たらMULTILINEで情報取得し直しているので，
 TRENDとかPLAYEDの処理は不要と判断
 """
-def solve(message):
+def solve(message,mode):
     # static values
     solve.pid = vars(solve).setdefault('pid',-1)
     solve.state = vars(solve).setdefault('state', None)
@@ -52,7 +52,7 @@ def solve(message):
         # start to think what should I do.
         # (ex. 205 PLAY 0 S 2-1)
         solve.state.setCurrentPlayerId(solve.state.myid)
-        action = _think(solve.state)
+        action = _think(solve.state,mode)
         if action.action_id == "5-3":
             return Message(205, ["PLAY", str(solve.pid), action.kind_id, action.action_id, action.trend_id])
         else:
